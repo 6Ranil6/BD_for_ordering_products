@@ -1,0 +1,101 @@
+-- 1. Сначала создаём таблицы БЕЗ внешних ключей
+CREATE TABLE order_status(
+    status_id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE
+);
+
+CREATE TABLE city(
+    city_id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE basket(
+    basket_id SERIAL PRIMARY KEY,
+    date_added TIMESTAMP NOT NULL
+);
+
+-- 2. Таблицы с минимальными зависимостями
+CREATE TABLE person(
+    person_id SERIAL PRIMARY KEY,
+    passport_series INT CHECK(passport_series BETWEEN 1000 AND 9999),
+    passport_number INT CHECK(passport_number BETWEEN 100000 AND 999999),
+    date_of_birth DATE NOT NULL,
+    name VARCHAR(255),
+    contact_info VARCHAR(255) NOT NULL
+);
+
+-- 3. Теперь card (зависит от person)
+CREATE TABLE card(
+    card_id SERIAL PRIMARY KEY,
+    person_id INT REFERENCES person(person_id),
+    card_number INT NOT NULL CHECK(card_number > 0),
+    end_date TIMESTAMP NOT NULL
+);
+
+-- 4. Обновляем person, чтобы добавить card_id (теперь связь возможна)
+ALTER TABLE person ADD COLUMN card_id INT REFERENCES card(card_id);
+
+-- 5. Продолжаем остальные таблицы
+CREATE TABLE client(
+    client_id SERIAL PRIMARY KEY,
+    person_id INT REFERENCES person(person_id)
+);
+
+CREATE TABLE courier(
+    courier_id SERIAL PRIMARY KEY,
+    person_id INT REFERENCES person(person_id)
+);
+
+CREATE TABLE store(
+    store_id SERIAL PRIMARY KEY,
+    city_id INT REFERENCES city(city_id),
+    name VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE product(
+    product_id SERIAL PRIMARY KEY,
+    store_id INT REFERENCES store(store_id),
+    name VARCHAR(255) NOT NULL,
+    weight DECIMAL(10, 2) NOT NULL,
+    stock_quantity INT NOT NULL 
+);
+
+CREATE TABLE customer_order(
+    order_id SERIAL PRIMARY KEY,
+    client_id INT REFERENCES client(client_id),
+    basket_id INT REFERENCES basket(basket_id),
+    store_id INT REFERENCES store(store_id),
+    status_id INT REFERENCES order_status(status_id),
+    creation_date TIMESTAMP NOT NULL,
+    address VARCHAR(255) NOT NULL,
+    total_weight DECIMAL(10, 2) NOT NULL
+);
+
+CREATE TABLE item(
+    item_id SERIAL PRIMARY KEY,
+    basket_id INT REFERENCES basket(basket_id),
+    product_id INT REFERENCES product(product_id),
+    quantity INT NOT NULL
+);
+
+CREATE TABLE delivery(
+    delivery_id SERIAL PRIMARY KEY,
+    order_id INT REFERENCES customer_order(order_id),
+    courier_id INT REFERENCES courier(courier_id),
+    status_id INT REFERENCES order_status(status_id),
+    payment_status BOOLEAN NOT NULL 
+);
+
+CREATE TABLE message(
+    message_id SERIAL PRIMARY KEY,
+    client_id INT REFERENCES client(client_id),
+    order_id INT REFERENCES customer_order(order_id),
+    courier_id INT REFERENCES courier(courier_id),
+    store_id INT REFERENCES store(store_id),
+    type VARCHAR(255) CHECK(type in (       
+        'order_created', 'order_confirmed', 'payment_received',
+        'order_assembled', 'courier_assigned', 'on_the_way',
+        'arrived', 'delivered', 'delivery_problem', 'cancelled'
+    )),
+    content TEXT NOT NULL
+);

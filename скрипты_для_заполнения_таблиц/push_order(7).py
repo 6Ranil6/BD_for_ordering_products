@@ -115,7 +115,7 @@ class PushCustomerOrder:
 def main():
     pusher = PushCustomerOrder()
     
-    if pusher.create_data(n=200000):
+    if pusher.create_data(n=1_000_000):
         pusher.push_to_db()
     
     pusher.close_connection()
